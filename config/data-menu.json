@@ -1,0 +1,37 @@
+{
+  "menu":[
+    {
+      "id":1,
+      "default": true,
+      "name": "编译",
+      "url": "#",
+      "target":"compileMode",
+      "child":[
+        {
+          "id":11,
+          "default": false,
+          "name": "sass编译",
+          "url": "#",
+          "target":"",
+          "child":[]
+        },
+        {
+          "id":12,
+          "default": false,
+          "name": "jade编译",
+          "url": "#",
+          "target":"",
+          "child":[]
+        }
+      ]
+    },
+    {
+      "id":2,
+      "default": false,
+      "name": "推送更新",
+      "url": "#",
+      "target":"pushUpdate",
+      "child":[]
+    }
+  ]
+}

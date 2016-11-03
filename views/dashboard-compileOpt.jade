@@ -1,0 +1,11 @@
+div.urlInput.mb40
+  label(for="sourceGitUrl") UI分支路径（源路径）
+  br
+  textarea#sourceGitUrl(placeholder="请输入UI分支的git路径",class="form-control",rows="3")
+  br
+  label(for="distGitUrl") 业务分支路径（推送路径）
+  br
+  textarea#distGitUrl(placeholder="请输入业务分支的git路径",class="form-control",rows="3")
+div.commitBtn
+  button#init.btn.btn-default.mr20 初始化项目
+  button#push.btn.btn-primary 编译并推送
