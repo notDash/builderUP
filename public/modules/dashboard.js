@@ -8,12 +8,14 @@ document.getElementById('logout').addEventListener('click', function () {
     form.submit();
 });
 
+
 $("#menu li").on('click', function () {
     $("#content .dataContent").hide();
    var target = $(this).attr('data-target');
     $("#menu li").toggleClass('active', '');
     $("#" + target).show();
 });
+
 
 
 
