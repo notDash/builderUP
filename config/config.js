@@ -9,6 +9,6 @@ module.exports = {
     projectPath:path.dirname('../config') + '/builderUP',
     projectName:'builderUP',
     compileFileName:'dist',
-    dataProjectInit: path.dirname('../config') + '/builderUP/config/data-project-init.json'
+    dataProjectInit: path.dirname('../config') + '/config/data-project-init.json'
 }
 

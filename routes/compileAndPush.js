@@ -3,8 +3,10 @@ var router = express.Router();
 
 var config = require('../config/config');
 var dataProjectInit = require('../config/data-project-init.json');
-var sourceUrl = 'http://gitlab.intra.gomeplus.com/gomeplusFED/gomeplusUI.git';
-var distUrl = 'http://gitlab.intra.gomeplus.com/gomeplusFED/opg.git';
+var sourceUrl = 'http://gitlab.intra.gomeplus.com/gomeplusFED/opg.git';  // branch builderUPTest
+var sourceBranch = 'builderUPTest';
+var distUrl = 'http://gitlab.intra.gomeplus.com/gomeplusFED/gomeplusUI.git'; // branch master
+var distBranch = 'master';
 
 var fs = require('fs');
 var execSync = require('child_process').execSync;
@@ -48,36 +50,45 @@ function getOptDistByUser(req) {
 }
 
 function cloneFromGitIfNE(dist, gitRepos, req, res) {
-    var gitUrls = [];
-    var result = {};
-    if(gitRepos && typeof gitRepos === 'object') {
-        gitUrls = Object.keys(gitRepos);
+    /*gitRepos = {
+        source: {
+            name:"",
+            url:"",
+            branch:""
+        },// 开发分支
+        dist: {
+            name:"",
+            url:"",
+            branch:""
+        }, // 推送分支
+        rootPath:""
+    }*/
+    // 保存当前初始化的数据
+    if(!dataProjectInit[req.session.userInfo.username]){
+        dataProjectInit[req.session.userInfo.username] = {};
+        dataProjectInit[req.session.userInfo.username].projects = {};
     }
+    dataProjectInit[req.session.userInfo.username].rootPath = gitRepos.rootPath;
+    dataProjectInit[req.session.userInfo.username].source = gitRepos.source;
+    dataProjectInit[req.session.userInfo.username].dist = gitRepos.dist;
+
+    var gitUrls = [gitRepos.source, gitRepos.dist];
     for(var i = 0; i < gitUrls.length; i++) {
-        (function (dist, fileName, gitUrl) {
-            fs.access(dist + '/' + fileName, fs.F_OK, function (err) {
+        (function (dist, gitUrl, rootPath) { // gitUrl {url: xxx, branch: xxx}
+            fs.access(dist + '/' + gitUrl.name, fs.F_OK, function (err) {
                 if(err) {
-                    console.log('检出项目：' + fileName + '\n' + '----' + gitUrl);
+                    console.log('检出项目：' + gitUrl.name + '\n' + '----' + JSON.stringify(gitUrl));
                     // 不存在则去git clone  gitRepos[gitUrls[i]]
-                    execSync('cd ' + dist + ' && git clone ' + gitUrl, function(err, stdout, stderr){
+                    execSync('E: && cd ' + dist + ' && git clone -b ' + gitUrl.branch + ' ' + gitUrl.url, function(err, stdout, stderr){
                         console.log(iconv.decode(new Buffer(stdout, binaryEncoding), encoding), iconv.decode(new Buffer(stderr, binaryEncoding), encoding));
                     });
                     // 把dist + '/' + fileName存储起来， 初始化完的项目
-                    if(dataProjectInit) {
-                        var dpi = dataProjectInit[req.session.userInfo.username];
-                        if(!dpi) {
-                            dpi["projects"] = [];
-                            dpi["projects"].push(fileName);
-                        } else if(dpi["projects"].indexOf(fileName) < 0) {
-                            dpi["projects"].push(fileName);
-                        }
-                    }
-                    fs.writeFileSync(config.dataProjectInit, JSON.stringify(dataProjectInit));
+                    writeDataProjectInit(req, gitUrl, rootPath);
                     return true;
                 }
                 console.log('存在该项目:' + dist + '/' + fileName);
                 // 如果存在该项目则去更新
-                exec('cd ' + dist + '/' + fileName + ' && git pull ' , function(err, stdout, stderr){
+                exec('E: && cd ' + dist + '/' + fileName + ' && git pull ' , function(err, stdout, stderr){
                     if(err || stderr) {
                         console.log(iconv.decode(new Buffer(stderr, binaryEncoding), encoding));
                     }
@@ -86,8 +97,15 @@ function cloneFromGitIfNE(dist, gitRepos, req, res) {
                 });
 
             });
-        })(dist, gitUrls[i], gitRepos[gitUrls[i]])
+        })(dist, gitUrls[i], gitRepos.rootPath)
     }
+}
+
+function writeDataProjectInit(req, gitUrl, rootPath) {
+    // 把dist + '/' + fileName存储起来， 初始化完的项目
+    var dpi = dataProjectInit[req.session.userInfo.username];
+    dpi["projects"][gitUrl.name] = gitUrl;
+    fs.writeFileSync(config.dataProjectInit, JSON.stringify(dataProjectInit));
 }
 
 function consoleInfo() {
@@ -105,18 +123,19 @@ function travel(dir, bizPath, callback, finish) {
         (function next(i) {
             if (i < files.length) {
                 var pathname = path.join(dir, files[i]);
-                var bizpath = path.join(bizPath, files[i]);
+                var nextPath = path.join(bizPath, files[i]);
                 fs.stat(pathname, function (err, stats) {
                     if (stats.isDirectory()) {
                         // 创建文件夹
-                        fs.mkdir(bizpath, function (err) {
+                        fs.mkdir(nextPath, function (err) {
+                            // 如果文件夹存在不做处理
                             if(err) {
                                 console.log(err);
                             }
                             console.log('文件夹创建成功');
-                        });
-                        travel(pathname, bizPath, callback, function () {
-                            next(i + 1);
+                            travel(pathname, nextPath, callback, function () {
+                                next(i + 1);
+                            });
                         });
                     } else {
                         callback(pathname, function () {
@@ -140,6 +159,17 @@ function copyFile(src, dst) {
     fs.createReadStream(src).pipe(fs.createWriteStream(dst));
 }
 
+function gulpTask() {
+    exec('E: && cd ' + dist + '/' + fileName + ' && git pull ' , function(err, stdout, stderr){
+        if(err || stderr) {
+            console.log(iconv.decode(new Buffer(stderr, binaryEncoding), encoding));
+        }
+        console.log(iconv.decode(new Buffer(stdout, binaryEncoding), encoding));
+        console.log('更新成功...');
+    });
+    exec('');
+}
+
 
 router.get('/', function(req, res, next) {
 
@@ -158,17 +188,38 @@ router.get('/init', function(req, res, next) {
     */
     var username = req.session.userInfo.username;
     var projWorkSpace = config.rootPath + '/' ;
-    var sourceUrlP = '';
-    var distUrlP = '';
-    var cloneOpt = {};
+    var sourceUrlP = '',
+        distUrlP = '',
+        cloneOpt = {
+            source: {
+                name:"",
+                url:"",
+                branch:""
+            },// 开发分支
+            dist: {
+                name:"",
+                url:"",
+                branch:""
+            }, // 推送分支
+            rootPath:""
+        },
+        rootPath = "";
     // 根据传入的路径截取最后的工程名， 再用当前用户名拼接上工程名作为本地仓库的文件夹名称
     if(username && sourceUrl && distUrl) {
         sourceUrlP = getProjName(sourceUrl);
         distUrlP = getProjName(distUrl);
-        cloneOpt[sourceUrlP] = sourceUrl;
-        cloneOpt[distUrlP] = distUrl;
+
         if(sourceUrlP && distUrlP) {
-            projWorkSpace += username + '_' + sourceUrlP + '_' + distUrlP;
+            cloneOpt.source.name = sourceUrlP;
+            cloneOpt.source.url = sourceUrl;
+            cloneOpt.source.branch = sourceBranch;
+            cloneOpt.dist.name = distUrlP;
+            cloneOpt.dist.url = distUrl;
+            cloneOpt.dist.branch = distBranch;
+
+            rootPath = username + '_' + sourceUrlP + '_' + distUrlP;
+            projWorkSpace += rootPath;
+            cloneOpt.rootPath = rootPath;
         }
     }
     console.log( __dirname + ' ------- '  +  projWorkSpace);
@@ -181,12 +232,9 @@ router.get('/init', function(req, res, next) {
                 if(err) {
                     console.log(err);
                 }
+                // 创建目录成功之后， 在该目录下创建一个用于暂存编译文件的文件夹， 在后续编译提交的时候，
+                // 编译完成的静态文件就存储在该目录下。
                 fs.mkdir(projWorkSpace + '/dist', function (err) {
-                    if(err) {
-                        console.log(err);
-                    }
-                });
-                fs.mkdir(projWorkSpace + '/bizDist', function (err) {
                     if(err) {
                         console.log(err);
                     }
@@ -197,8 +245,6 @@ router.get('/init', function(req, res, next) {
         cloneFromGitIfNE(projWorkSpace, cloneOpt, req, res);
     })
 
-
-
     console.log('the ends');
     res.render('error', {message:'test', error:{stack:'test'}});
 });
@@ -207,7 +253,7 @@ router.get('/push', function(req, res, next) {
     // 在推送的时候， 先去编译再去拷贝文件， add, commit, push
     // 拷贝文件
     var dist = getOptDistByUser(req) + '/dist';
-    var bizPath = getOptDistByUser(req) + '/bizDist';
+    var bizPath = getOptDistByUser(req) + '/opg';
     travel(dist, bizPath, function (pathname, call) {
         console.log(pathname);
         var tempPath = path.join(bizPath + '/', pathname.substring(dist.length, pathname.length));
@@ -215,6 +261,7 @@ router.get('/push', function(req, res, next) {
         call();
     }, consoleInfo);
 
+    res.render('error', {message:'文件写入成功', error:{stack:'文件写入成功'}});
 });
 
 

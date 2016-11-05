@@ -1,7 +1,1 @@
-{
-  "lishengyong":
-  {
-    "rootPath":"lishengyong_gomeplusUI_opg",
-    "projects":["opg","gomeplusUI"]
-  }
-}
+{"lishengyong":{"projects":{"opg":{"name":"opg","url":"http://gitlab.intra.gomeplus.com/gomeplusFED/opg.git","branch":"builderUPTest"},"oldApp":{"name":"oldApp","url":"http://gitlab.intra.gomeplus.com/gomeplusFED/oldApp.git","branch":"builderUPDist_lishengyong"},"gomeplusUI":{"name":"gomeplusUI","url":"http://gitlab.intra.gomeplus.com/gomeplusFED/gomeplusUI.git","branch":"master"}},"rootPath":"lishengyong_opg_gomeplusUI","source":{"name":"opg","url":"http://gitlab.intra.gomeplus.com/gomeplusFED/opg.git","branch":"builderUPTest"},"dist":{"name":"gomeplusUI","url":"http://gitlab.intra.gomeplus.com/gomeplusFED/gomeplusUI.git","branch":"master"}}}
